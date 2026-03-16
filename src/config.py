@@ -12,10 +12,18 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    # LLM Settings (Mistral API)
+    # LLM settings (Mistral API)
     MISTRAL_API_KEY: str
     MISTRAL_BASE_URL: str = "https://api.mistral.ai/v1"
     LLM_MODEL: str = "mistral-small-latest"
+    LLM_TEMPERATURE: float = 0.3
+    LLM_TOP_P: float = 0.9
+    LLM_MAX_TOKENS: int = 4096
+
+    # SGR RAG Settings
+    SGR_RELEVANCE_THRESHOLD: float = 0.5
+    SGR_MAX_ITERATIONS: int = 3
+    SGR_MAX_ADDITIONAL_QUESTIONS: int = 5
 
     # Embeddings Settings (local model)
     EMBEDDING_MODEL: str = "deepvk/USER-bge-m3"
@@ -25,6 +33,8 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 256
     CHUNK_OVERLAP: int = 64
     TOP_K_RESULTS: int = 3
+    TOP_K_ADDITIONAL: int = 2
+    DOC_MIN_SCORE: float = 0.6
 
     # Vector DB Settings
     CHROMA_PERSIST_DIR: str = "./data/chroma_db"

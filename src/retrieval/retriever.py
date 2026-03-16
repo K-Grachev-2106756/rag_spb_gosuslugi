@@ -38,6 +38,7 @@ class Retriever:
         self,
         vector_store: VectorStore,
         top_k: int = settings.TOP_K_RESULTS,
+        min_score: int = settings.DOC_MIN_SCORE,
     ):
         """
         Initialize the retriever.
@@ -48,7 +49,8 @@ class Retriever:
         """
         self._vector_store = vector_store
         self._top_k = top_k
-        logger.info(f"Retriever initialized with top_k={top_k}")
+        self._min_score = min_score
+        logger.info(f"Retriever initialized with {top_k=} and {min_score=}")
 
     def retrieve(self, query: str) -> list[RetrievalResult]:
         """
@@ -66,20 +68,19 @@ class Retriever:
 
         results = []
         for raw in raw_results:
-            metadata = raw.get("metadata", {})
-            # Convert distance to relevance score (lower distance = higher relevance)
-            distance = raw.get("distance", 1.0)
-            relevance_score = 1.0 - min(distance, 1.0)
-
-            results.append(
-                RetrievalResult(
-                    content=raw["content"],
-                    document_title=metadata.get("document_title", "Unknown"),
-                    metadata=metadata.get("metadata", ""),
-                    parent_section=metadata.get("parent_section", ""),
-                    relevance_score=relevance_score,
+            metadata, distance = raw.get("metadata", {}), raw.get("distance", 1.)
+            
+            relevance_score = 1. - min(distance, 1.)
+            if (self._min_score is None) or (relevance_score >= self._min_score):
+                results.append(
+                    RetrievalResult(
+                        content=raw["content"],
+                        document_title=metadata.get("document_title", "Unknown"),
+                        metadata=metadata.get("metadata", ""),
+                        parent_section=metadata.get("parent_section", ""),
+                        relevance_score=relevance_score,
+                    )
                 )
-            )
 
         logger.info(f"Retrieved {len(results)} results")
         return results
@@ -97,7 +98,7 @@ class Retriever:
         results = self.retrieve(query)
 
         if not results:
-            return "Не найдено релевантной информации в базе знаний."
+            return []
 
         formatted_parts, used_documents = list(), set()
         for result in results:
