@@ -150,13 +150,13 @@ class TestStreamEndpoint:
     @pytest.mark.asyncio
     async def test_stream_generate(self, client, mock_pipeline):
         """Test streaming generation endpoint."""
-        # Set up the mock to return an async generator
+        # Set up the mock to return an async generator (as the real pipeline does)
         async def async_gen(query):
             for chunk in ["Chunk 1", "Chunk 2"]:
                 yield chunk
-        
+
         mock_pipeline.query_stream = async_gen
-        
+
         response = await client.post(
             "/generate/stream",
             json={"query": "Test streaming query"},

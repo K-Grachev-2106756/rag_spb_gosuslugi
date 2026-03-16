@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 import logging
-from typing import Iterator
+from typing import AsyncIterator, Iterator
 
 import httpx
 
@@ -20,7 +20,7 @@ class GenerationProvider(ABC):
         pass
 
     @abstractmethod
-    def generate_stream(self, messages: list[dict]) -> Iterator[str]:
+    async def generate_stream(self, messages: list[dict]) -> AsyncIterator[str]:
         """Generate text as a stream of chunks."""
         pass
 
@@ -103,7 +103,7 @@ class MistralGenerator(GenerationProvider):
             logger.error(f"API request failed: {e}")
             raise GenerationError(f"Failed to generate: {e}")
 
-    def generate_stream(self, messages: list[dict]) -> Iterator[str]:
+    async def generate_stream(self, messages: list[dict]) -> AsyncIterator[str]:
         """
         Generate response as a stream of chunks.
 
@@ -116,8 +116,8 @@ class MistralGenerator(GenerationProvider):
         logger.info(f"Streaming generation with model: {self._model}")
 
         try:
-            with httpx.Client(timeout=120.0) as client:
-                with client.stream(
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream(
                     "POST",
                     f"{self._base_url}/chat/completions",
                     headers=self._headers,
@@ -129,7 +129,7 @@ class MistralGenerator(GenerationProvider):
                 ) as response:
                     response.raise_for_status()
 
-                    for line in response.iter_lines():
+                    async for line in response.aiter_lines():
                         if line.startswith("data: "):
                             data = line[6:]
                             if data.strip() == "[DONE]":

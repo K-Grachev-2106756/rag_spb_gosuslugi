@@ -3,7 +3,7 @@
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Iterator
+from typing import AsyncIterator, Iterator
 
 from src.config import settings
 from src.data_processing.loader import DocumentLoader
@@ -218,9 +218,9 @@ class RAGPipeline:
         logger.info(f"Query processed successfully.")
         return response
 
-    def query_stream(
+    async def query_stream(
         self, user_query: str
-    ) -> Iterator[str]:
+    ) -> AsyncIterator[str]:
         """
         Process a query with streaming generation.
 
@@ -249,7 +249,7 @@ class RAGPipeline:
 
         # Step 4: Check if information is complete
         additional_questions = self._check_information_completeness(
-            query=user_query, 
+            query=user_query,
             contexts=contexts,
         )
 
@@ -257,7 +257,7 @@ class RAGPipeline:
         additional_qa_pairs = []
         if additional_questions:
             additional_qa_pairs = self._iterative_retrieval(
-                additional_questions=additional_questions, 
+                additional_questions=additional_questions,
                 existing_results=relevant_results,
             )
 
@@ -272,7 +272,8 @@ class RAGPipeline:
             },
         ]
 
-        yield from self._generator.generate_stream(messages)
+        async for chunk in self._generator.generate_stream(messages):
+            yield chunk
 
     def _filter_by_relevance(self, query: str, results: list[str]) -> list[str]:
         """

@@ -1,8 +1,7 @@
 """Tests for RAG pipeline module."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from dataclasses import dataclass
+from unittest.mock import Mock, patch
 
 from src.pipeline.rag import (
     RAGPipeline,
@@ -74,7 +73,13 @@ class TestRAGPipeline:
         """Create a mock generator."""
         generator = Mock(spec=GenerationProvider)
         generator.generate = Mock(return_value="Generated response")
-        generator.generate_stream = Mock(return_value=iter(["Chunk 1", "Chunk 2"]))
+        
+        # Create async generator for generate_stream
+        async def async_gen(*args, **kwargs):
+            for chunk in ["Chunk 1", "Chunk 2"]:
+                yield chunk
+        
+        generator.generate_stream = async_gen
         return generator
 
     def test_pipeline_initialization(self, mock_vector_store, mock_generator):
@@ -250,7 +255,8 @@ class TestRAGPipeline:
                     assert isinstance(response, RAGResponse)
                     assert response.additional_questions == ["Q1"]
 
-    def test_query_stream(self, mock_vector_store, mock_generator):
+    @pytest.mark.asyncio
+    async def test_query_stream(self, mock_vector_store, mock_generator):
         """Test streaming query processing."""
         mock_vector_store.search = Mock(return_value=[
             {
@@ -268,11 +274,12 @@ class TestRAGPipeline:
 
         with patch.object(pipeline, '_check_document_relevance', return_value=True):
             with patch.object(pipeline, '_check_information_completeness', return_value=[]):
-                chunks = list(pipeline.query_stream("Test query"))
+                chunks = [chunk async for chunk in pipeline.query_stream("Test query")]
 
                 assert len(chunks) > 0
 
-    def test_query_stream_no_results(self, mock_vector_store, mock_generator):
+    @pytest.mark.asyncio
+    async def test_query_stream_no_results(self, mock_vector_store, mock_generator):
         """Test streaming query with no results."""
         mock_vector_store.search = Mock(return_value=[])
 
@@ -282,7 +289,7 @@ class TestRAGPipeline:
             data_dir="/test/data",
         )
 
-        chunks = list(pipeline.query_stream("Test query"))
+        chunks = [chunk async for chunk in pipeline.query_stream("Test query")]
 
         assert len(chunks) == 1
         assert "Не найдено релевантной информации" in chunks[0]
