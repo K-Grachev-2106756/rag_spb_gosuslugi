@@ -78,11 +78,11 @@ class RecursiveChunker:
 
     def _create_chunk_with_context(
         self,
-        content: str,
         document_title: str,
         description: str,
         info_title: str,
-        metadata: str,
+        content: str,
+        full_content: str,
         index: int,
         parent_section: str = "",
     ) -> DocumentChunk:
@@ -94,26 +94,29 @@ class RecursiveChunker:
             document_title: Title of the source document.
             description: Static description part of the document.
             info_title: Title of the info section.
-            metadata: Metadata information from the document.
             index: Index of the chunk.
             parent_section: Parent section name if applicable.
 
         Returns:
             DocumentChunk with full context.
         """
-        full_content = self._build_contextual_content(
+        chunk_content = self._build_contextual_content(
             document_title=document_title,
             description=description,
             info_title=info_title,
-            metadata=metadata,
             content=content,
-        )
+        )  # Chunk to embed
 
         return DocumentChunk(
-            content=full_content,
+            content=chunk_content,
             document_title=document_title,
-            metadata=metadata,
-            chunk_id=self._generate_chunk_id(full_content, index),
+            metadata=self._build_contextual_content(
+                document_title=document_title, 
+                description=description,
+                info_title=info_title,
+                content=full_content,
+            ),  # Chunk for augmented generation
+            chunk_id=self._generate_chunk_id(chunk_content, index),
             parent_section=parent_section,
         )
 
@@ -122,7 +125,6 @@ class RecursiveChunker:
         document_title: Optional[str] = None,
         description: Optional[str] = None,
         info_title: Optional[str] = None,
-        metadata: Optional[str] = None,
         content: Optional[str] = None,
     ) -> str:
         """
@@ -132,7 +134,6 @@ class RecursiveChunker:
             [Document: title] 
             [Description: description] 
             [Info: info_title] 
-            [Meta: metadata] 
             Content
         )
         """
@@ -146,9 +147,6 @@ class RecursiveChunker:
 
         if info_title:
             context_parts.append(f"[Раздел: {info_title}]")
-
-        if metadata:
-            context_parts.append(f"[Мета: {metadata}]")
 
         if content:
             context_parts.append(content)
@@ -328,19 +326,17 @@ class RecursiveChunker:
             for chunk_text in content_chunks:
                 if chunk_text.strip():
                     yield self._create_chunk_with_context(
-                        content=chunk_text,
                         document_title=document.title,
                         description=document.description_part,
                         info_title=info_title,
-                        metadata="",
+                        content=chunk_text,
+                        full_content=info_content,
                         index=chunk_index,
                         parent_section=f"info_{info_index}",
                     )
                     chunk_index += 1
 
-        logger.info(
-            f"Document '{document.title}' chunked into {chunk_index} chunks"
-        )
+        logger.info(f"Document '{document.title}' chunked into {chunk_index} chunks")
 
     def chunk_all_documents(
         self, documents: Iterator[Document]
