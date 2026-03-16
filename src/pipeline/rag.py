@@ -182,7 +182,6 @@ class RAGPipeline:
                 generated_document=response,
                 retrieved_results=retrieved_results,
                 sources=[],
-                iterations_count=0,
             )
 
         # Step 3: Check if information is complete

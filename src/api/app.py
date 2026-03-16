@@ -173,7 +173,7 @@ async def generate_document(request: GenerateRequest, pipeline: PipelineDep) -> 
 
 async def generate_stream_generator(request: GenerateRequest, pipeline: PipelineDep):
     """Generator for streaming document generation."""
-    for chunk in pipeline.query_stream(request.query):
+    async for chunk in pipeline.query_stream(request.query):
         yield chunk
 
 
@@ -186,7 +186,7 @@ async def generate_document_stream(request: GenerateRequest, pipeline: PipelineD
     """
     try:
         return StreamingResponse(
-            generate_stream_generator(pipeline, request),
+            generate_stream_generator(request, pipeline),
             media_type="text/plain; charset=utf-8",
         )
     except Exception as e:
