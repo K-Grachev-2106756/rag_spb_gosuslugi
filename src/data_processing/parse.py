@@ -95,11 +95,26 @@ def parse_expandable_block(html):
     # текст из text-container
     container = soup.find(class_="text-container")
     if container:
-        paragraphs = container.find_all("p")
-        for p in paragraphs:
-            text = p.get_text(strip=False)
-            if text and (cleaned:=postprocess_text(text)):
-                lines.append(cleaned)
+        for child in container.children:
+            if not getattr(child, "name", None):
+                continue
+
+            # абзацы
+            if child.name == "p":
+                text = child.get_text(strip=False)
+                if text and (cleaned := postprocess_text(text)):
+                    lines.append(cleaned)
+
+            # списки
+            elif child.name in ("ol", "ul"):
+                items = child.find_all("li", recursive=False)
+                for idx, li in enumerate(items, 1):
+                    text = li.get_text(strip=False)
+                    if text and (cleaned := postprocess_text(text)):
+                        if child.name == "ol":
+                            lines.append(f"{idx}. {cleaned}")
+                        else:
+                            lines.append(f"- {cleaned}")
 
     return title, "\n".join(lines)
 
