@@ -24,20 +24,19 @@ def extract_blocks(html_path):
     else:
         before_html = html
 
-    upper_part = [
+    upper_part = "\n".join([
         part for parts in parse_text_containers(before_html, with_title=False)
         if SORRY_MARK not in (part:=" ".join(parts))
-    ]
+    ])
 
     # 2. Поиск всех разворачивающихся блоков
     matches = BLOCKS_PATTERN.findall(html)
 
     lower_part = []
     for block_html in matches:
-        parsed_block = parse_expandable_block(block_html)
+        parsed_block_title, parsed_block = parse_expandable_block(block_html)
         if parsed_block:
-            lower_part.append(parsed_block)
-
+            lower_part.append((parsed_block_title, parsed_block))
 
     return title, upper_part, lower_part
 
@@ -82,14 +81,16 @@ def parse_text_containers(html, with_title=False):
 def parse_expandable_block(html):
     soup = BeautifulSoup(html, "lxml")
     
-    lines = []
+    title, lines = "", []
 
     # title из button → title-base
     button = soup.find("button")
     if button:
-        title = button.find(class_="title-base")
-        if title:
-            lines.append(title.get_text(strip=False))
+        title_block = button.find(class_="title-base")
+        if title_block:
+            title = postprocess_text(
+                title_block.get_text(strip=False)
+            )
 
     # текст из text-container
     container = soup.find(class_="text-container")
@@ -100,7 +101,7 @@ def parse_expandable_block(html):
             if text and (cleaned:=postprocess_text(text)):
                 lines.append(cleaned)
 
-    return lines if lines else None
+    return title, "\n".join(lines)
 
 
 def postprocess_text(text):
@@ -110,4 +111,4 @@ def postprocess_text(text):
 
 
 if __name__ == "__main__":
-    title, meta, main_info = extract_blocks("data/Меры поддержки жителей блокадного Ленинграда.html")
+    title, description_part, info_part = extract_blocks("data/Меры поддержки жителей блокадного Ленинграда.html")
