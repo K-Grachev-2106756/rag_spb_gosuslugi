@@ -90,11 +90,21 @@
 
 ## Обоснование выбора Embedding модели
 
-**deepvk/USER-bge-m3**
+|Модель|RuMTEB Avg|VRAM (4-bit)|
+|------|----------|------------|
+|Qwen3-Embedding-8B |70.6|6.5  |
+|Qwen3-Embedding-4B |69.5|3.5  |
+|GigaEmbeddings-3B  |69.1|3    |
+|ru-en-RoSBERTa-0.3B|60.4|<1   |
+
+**ai-sage/Giga-Embeddings-instruct**
+
 - Обучена на русскоязычных данных
-- Поддерживает мультиязычный контекст
-- Высокое качество семантического поиска по метрике Retrieval
-- Относительно небольшой размер модели
+- Высокое качество семантического поиска
+- Размерность: 2048
+- Максимальная длина последовательности: 4096 токенов
+- Можно использовать flash_attention_2 для ускорения и экономии памяти
+
 
 ## Структура проекта
 
@@ -264,7 +274,7 @@ pytest --cov=src
 | `MISTRAL_API_KEY` | API ключ Mistral | - |
 | `MISTRAL_BASE_URL` | URL Mistral API | `https://api.mistral.ai/v1` |
 | `LLM_MODEL` | Модель для генерации | `mistral-small-latest` |
-| `EMBEDDING_MODEL` | Модель для эмбеддингов | `deepvk/USER-bge-m3` |
+| `EMBEDDING_MODEL` | Модель для эмбеддингов | `ai-sage/Giga-Embeddings-instruct` |
 | `CHUNK_SIZE` | Размер чанка | `256` |
 | `CHUNK_OVERLAP` | Перекрытие чанков | `64` |
 | `TOP_K_RESULTS` | Количество результатов поиска | `5` |

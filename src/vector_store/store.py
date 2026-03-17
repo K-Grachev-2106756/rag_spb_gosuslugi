@@ -161,15 +161,15 @@ class VectorStore:
     ) -> list[dict]:
         """
         Search for relevant chunks.
-        
+
         Args:
             query: Search query text.
             top_k: Number of results to return.
-            
+
         Returns:
             List of search results with content and metadata.
         """
-        query_embedding = self._embedding_provider.embed(query)
+        query_embedding = self._embedding_provider.embed(query, is_query=True)
 
         results = self._collection.query(
             query_embeddings=[query_embedding],

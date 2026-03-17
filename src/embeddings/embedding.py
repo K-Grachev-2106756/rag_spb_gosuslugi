@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 import logging
-from typing import Union
 
 import torch
 from sentence_transformers import SentenceTransformer
@@ -11,6 +10,8 @@ from src.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Prompt for encoding user queries with Giga-Embeddings-instruct model
+QUERY_PROMPT = "Instruct: Дан вопрос, необходимо найти абзац текста с ответом\nQuery: "
 
 class EmbeddingProvider(ABC):
     """Abstract base class for embedding providers."""
@@ -40,33 +41,46 @@ class SentenceTransformerEmbeddings(EmbeddingProvider):
     def __init__(self, model_name: str = settings.EMBEDDING_MODEL):
         """
         Initialize the embedding model.
-        
+
         Args:
             model_name: Name of the sentence-transformers model to use.
         """
         logger.info(f"Loading embedding model: {model_name}")
 
         self._model = SentenceTransformer(
-            model_name_or_path=model_name, 
+            model_name_or_path=model_name,
             device="cuda" if torch.cuda.is_available() else "cpu",
+            model_kwargs={
+                "trust_remote_code": True,
+                "torch_dtype": torch.float16,
+            },
+            config_kwargs={
+                "trust_remote_code": True,
+            },
         ).eval()
+        self._model.max_seq_length = 4096
         self._dimension = self._model.get_sentence_embedding_dimension()
-        
+
         logger.info(f"Embedding model loaded. Dimension: {self._dimension}")
 
 
-    def embed(self, data: str) -> list[float]:
+    def embed(self, data: str, is_query: bool = False) -> list[float]:
         """
         Generate embeddings for single text.
 
         Args:
             data: Text to embed.
+            is_query: If True, apply query prompt for user queries.
 
         Returns:
             Embedding or list of embeddings.
         """
         with torch.no_grad():
-            embeddings = self._model.encode(data, convert_to_numpy=True)
+            embeddings = self._model.encode(
+                data,
+                convert_to_numpy=True,
+                **({"prompt": QUERY_PROMPT} if is_query else {}),
+            )
 
         return embeddings.tolist()
 
@@ -75,6 +89,7 @@ class SentenceTransformerEmbeddings(EmbeddingProvider):
         data: list[str],
         batch_size: int = 16,
         show_progress: bool = False,
+        is_query: bool = False,
     ) -> list[list[float]]:
         """
         Generate embeddings for a large list of texts in batches.
@@ -83,6 +98,7 @@ class SentenceTransformerEmbeddings(EmbeddingProvider):
             data: List of texts to embed.
             batch_size: Number of texts to process in each batch.
             show_progress: Whether to show progress bar.
+            is_query: If True, apply query prompt for user queries.
 
         Returns:
             List of embeddings.
@@ -93,6 +109,7 @@ class SentenceTransformerEmbeddings(EmbeddingProvider):
                 batch_size=batch_size,
                 convert_to_numpy=True,
                 show_progress_bar=show_progress,
+                **({"prompt": QUERY_PROMPT} if is_query else {}),
             )
 
         return embeddings.tolist()
