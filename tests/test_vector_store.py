@@ -10,6 +10,22 @@ from src.embeddings import EmbeddingProvider
 from src.vector_store import VectorStore
 
 
+@pytest.fixture(autouse=True)
+def mock_embedding_provider_init():
+    """Mock embedding provider initialization to prevent model loading."""
+    with patch("src.vector_store.store.create_embedding_provider") as mock_create:
+        mock_instance = Mock()
+        mock_instance.embed = Mock(return_value=[0.1] * 1024)
+        mock_instance.dimension = 1024
+
+        def embed_batch_side_effect(data, **kwargs):
+            return [[0.1] * 1024 for _ in data]
+
+        mock_instance.embed_batch = Mock(side_effect=embed_batch_side_effect)
+        mock_create.return_value = mock_instance
+        yield mock_create
+
+
 @pytest.fixture
 def temp_vector_store():
     """Create a temporary vector store for testing."""
@@ -296,4 +312,4 @@ class TestVectorStore:
 
             store.search("test query", top_k=3)
 
-            mock_embedding_provider.embed.assert_called_once_with("test query")
+            mock_embedding_provider.embed.assert_called_once_with("test query", is_query=True)

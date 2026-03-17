@@ -4,11 +4,17 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import numpy as np
 
+from src.config import settings
 from src.embeddings.embedding import (
     EmbeddingProvider,
     SentenceTransformerEmbeddings,
     create_embedding_provider,
 )
+
+
+@pytest.fixture
+def emb_dim():
+    return settings.EMBEDDING_DIMENSION
 
 
 class TestEmbeddingProviderAbstract:
@@ -30,43 +36,43 @@ class TestSentenceTransformerEmbeddings:
     """Tests for SentenceTransformerEmbeddings class."""
 
     @pytest.fixture
-    def mock_model(self):
+    def mock_model(self, emb_dim):
         """Create a mock sentence transformer model."""
         with patch('src.embeddings.embedding.SentenceTransformer') as mock:
             mock_instance = Mock()
-            mock_instance.get_sentence_embedding_dimension.return_value = 1024
-            mock_instance.encode.return_value = np.zeros(1024).tolist()
+            mock_instance.get_sentence_embedding_dimension.return_value = emb_dim
+            mock_instance.encode.return_value = np.zeros(emb_dim).tolist()
             mock_instance.eval.return_value = mock_instance  # Chain eval()
             mock.return_value = mock_instance
             yield mock_instance
 
-    def test_initialization(self, mock_model):
+    def test_initialization(self, mock_model, emb_dim):
         """Test embedding provider initialization."""
         with patch('src.embeddings.embedding.SentenceTransformer', return_value=mock_model):
             provider = SentenceTransformerEmbeddings(model_name="test-model")
-            assert provider.dimension == 1024
+            assert provider.dimension == emb_dim
 
-    def test_initialization_with_custom_model(self, mock_model):
+    def test_initialization_with_custom_model(self, mock_model, emb_dim):
         """Test initialization with custom model name."""
         with patch('src.embeddings.embedding.SentenceTransformer', return_value=mock_model):
             provider = SentenceTransformerEmbeddings(model_name="custom-model")
-            assert provider.dimension == 1024
+            assert provider.dimension == emb_dim
 
-    def test_embed_single_text(self, mock_model):
+    def test_embed_single_text(self, mock_model, emb_dim):
         """Test embedding a single text."""
-        mock_model.encode.return_value = np.ones(1024)
+        mock_model.encode.return_value = np.ones(emb_dim)
         
         with patch('src.embeddings.embedding.SentenceTransformer', return_value=mock_model):
             provider = SentenceTransformerEmbeddings()
             result = provider.embed("test text")
 
             assert isinstance(result, list)
-            assert len(result) == 1024
+            assert len(result) == emb_dim
             assert all(x == 1.0 for x in result)
 
-    def test_embed_batch(self, mock_model):
+    def test_embed_batch(self, mock_model, emb_dim):
         """Test embedding a batch of texts."""
-        mock_model.encode.return_value = np.ones((3, 1024))
+        mock_model.encode.return_value = np.ones((3, emb_dim))
         
         with patch('src.embeddings.embedding.SentenceTransformer', return_value=mock_model):
             provider = SentenceTransformerEmbeddings()
@@ -75,11 +81,11 @@ class TestSentenceTransformerEmbeddings:
 
             assert isinstance(results, list)
             assert len(results) == 3
-            assert all(len(r) == 1024 for r in results)
+            assert all(len(r) == emb_dim for r in results)
 
-    def test_embed_batch_with_custom_batch_size(self, mock_model):
+    def test_embed_batch_with_custom_batch_size(self, mock_model, emb_dim):
         """Test batch embedding with custom batch size."""
-        mock_model.encode.return_value = np.ones((2, 1024))
+        mock_model.encode.return_value = np.ones((2, emb_dim))
         
         with patch('src.embeddings.embedding.SentenceTransformer', return_value=mock_model):
             provider = SentenceTransformerEmbeddings()
@@ -89,9 +95,9 @@ class TestSentenceTransformerEmbeddings:
             assert len(results) == 2
             mock_model.encode.assert_called_once()
 
-    def test_embed_batch_with_progress(self, mock_model):
+    def test_embed_batch_with_progress(self, mock_model, emb_dim):
         """Test batch embedding with progress bar."""
-        mock_model.encode.return_value = np.ones((2, 1024))
+        mock_model.encode.return_value = np.ones((2, emb_dim))
         
         with patch('src.embeddings.embedding.SentenceTransformer', return_value=mock_model):
             provider = SentenceTransformerEmbeddings()
@@ -100,11 +106,11 @@ class TestSentenceTransformerEmbeddings:
 
             assert len(results) == 2
 
-    def test_dimension_property(self, mock_model):
+    def test_dimension_property(self, mock_model, emb_dim):
         """Test dimension property."""
         with patch('src.embeddings.embedding.SentenceTransformer', return_value=mock_model):
             provider = SentenceTransformerEmbeddings()
-            assert provider.dimension == 1024
+            assert provider.dimension == emb_dim
 
     def test_embed_returns_list_not_numpy(self, mock_model):
         """Test that embed returns Python list, not numpy array."""
@@ -121,10 +127,10 @@ class TestCreateEmbeddingProvider:
     """Tests for create_embedding_provider factory function."""
 
     @patch('src.embeddings.embedding.SentenceTransformer')
-    def test_create_provider_returns_instance(self, mock_st):
+    def test_create_provider_returns_instance(self, mock_st, emb_dim):
         """Test that factory returns SentenceTransformerEmbeddings instance."""
         mock_instance = Mock()
-        mock_instance.get_sentence_embedding_dimension.return_value = 1024
+        mock_instance.get_sentence_embedding_dimension.return_value = emb_dim
         mock_st.return_value = mock_instance
 
         provider = create_embedding_provider()
@@ -132,12 +138,12 @@ class TestCreateEmbeddingProvider:
         assert isinstance(provider, SentenceTransformerEmbeddings)
 
     @patch('src.embeddings.embedding.SentenceTransformer')
-    def test_create_provider_uses_settings_model(self, mock_st):
+    def test_create_provider_uses_settings_model(self, mock_st, emb_dim):
         """Test that factory uses settings model name."""
         from src.config import settings
 
         mock_instance = Mock()
-        mock_instance.get_sentence_embedding_dimension.return_value = 1024
+        mock_instance.get_sentence_embedding_dimension.return_value = emb_dim
         mock_st.return_value = mock_instance
 
         create_embedding_provider()
